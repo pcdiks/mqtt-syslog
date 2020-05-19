@@ -1,14 +1,16 @@
 from socket import *
 import paho.mqtt.client as mqtt
 import syslog
+import re
+import json
 
 #MQTT Parameters
-mqtt_server = "<<INSERT YOUR MQTT Server HERE>>"
-mqtt_port = <<INSERT YOUR MQTT PORT HERE>>
-mqtt_client_id = "<<INSERT YOUR CLIENT_ID  HERE>>"
-mqtt_username = "<<INSERT YOUR USERNAME  HERE>>"
-mqtt_password = "<<INSERT YOUR PASSWORD  HERE>>"
-mqtt_topic = "<<INSERT YOUR TOPIC  HERE>>"
+mqtt_server = "localhost"
+mqtt_port = 1883
+mqtt_client_id = ""
+mqtt_username = ""
+mqtt_password = ""
+mqtt_topic = "syslog"
 
 #Syslog Parameters
 #Insert IP of server listener. 0.0.0.0 for any
@@ -27,7 +29,7 @@ if TCPSock.bind:
 
 #MQTT client
 syslog.syslog('Opening MQTT socket: %s/%s' % (mqtt_server,mqtt_port))
-mqttclient = mqtt.Client(client_id=mqtt_client_id, clean_session=True,protocol="MQTTv311")
+mqttclient = mqtt.Client(client_id=mqtt_client_id, clean_session=True,protocol=mqtt.MQTTv311)
 mqttclient.username_pw_set(mqtt_username,mqtt_password)
 mqttclient.connect(mqtt_server,mqtt_port,keepalive=60)
 if mqttclient:
@@ -41,9 +43,18 @@ while 1:
     if not data:
         print ("No response from systems!")
         break
-    else:
-        mqttclient.publish(mqtt_topic,payload=data,qos=0,retain=True)
+    elif b"INVITE sip:31529795144" in data:
+        output = data.decode()
+        result = re.search("From: <sip:(\d*)@", output)
+        phonenumber = result.group(1)
+        queryresult = {}
+        queryresult['from'] = phonenumber
+        json_data = json.dumps(queryresult)
+        mqttclient.publish(mqtt_topic,payload=json_data,qos=0,retain=True)
         syslog.syslog('New Syslog -> sent to mqtt server: %s' % (data))
-		#print ("Message: ", data, file=db, flush=True)
+    #else:
+        #mqttclient.publish(mqtt_topic,payload=data,qos=0,retain=True)
+        #syslog.syslog('New Syslog -> sent to mqtt server: %s' % (data))
+        #print ("Nothing to do")
 
 TCPSock.close()
