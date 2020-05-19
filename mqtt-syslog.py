@@ -43,7 +43,7 @@ while 1:
     if not data:
         print ("No response from systems!")
         break
-    elif b"INVITE sip:31529795144" in data:
+    elif b"INVITE sip:" in data:
         output = data.decode()
         result = re.search("From: <sip:(\d*)@", output)
         phonenumber = result.group(1)
